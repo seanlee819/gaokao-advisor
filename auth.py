@@ -101,11 +101,35 @@ def increment_query(user_id):
     conn.close()
 
 def get_tier_limits(tier):
-    """返回不同等级的限制"""
-    if tier == 'vip':
-        return {"top_n": 20, "show_majors": True, "show_rank": True, "export": True, "max_queries": 9999}
-    else:
-        return {"top_n": 3, "show_majors": False, "show_rank": False, "export": False, "max_queries": 5}
+    """三档买断制"""
+    tiers = {
+        "free": {
+            "name": "免费版", "top_n": 3, "show_majors": False,
+            "show_rank": False, "export": False, "max_queries": 3,
+            "price": "¥0", "color": "#888",
+        },
+        "enhanced": {
+            "name": "增强版", "top_n": 10, "show_majors": True,
+            "show_rank": True, "export": True, "max_queries": 30,
+            "price": "¥29.9", "color": "#1a73e8",
+        },
+        "complete": {
+            "name": "完全版", "top_n": 20, "show_majors": True,
+            "show_rank": True, "export": True, "max_queries": 9999,
+            "price": "¥59.9", "color": "#ff8c00",
+        },
+    }
+    return tiers.get(tier, tiers["free"])
+
+def upgrade_tier(user_id, new_tier):
+    """升级用户等级（买断制, 永久生效）"""
+    if new_tier not in ("enhanced", "complete"):
+        return False, "无效的等级"
+    conn = get_db()
+    conn.execute("UPDATE users SET tier=?, query_count=0 WHERE id=?", (new_tier, user_id))
+    conn.commit()
+    conn.close()
+    return True, None
 
 # ============================================================
 # 初始化

@@ -81,11 +81,11 @@ with st.sidebar:
     
     if st.session_state.user:
         user = st.session_state.user
-        tier_label = "⭐ VIP会员" if user['tier'] == 'vip' else "🔓 免费用户"
-        st.success(f"{tier_label}\n{user['email']}")
-        
         limits = get_tier_limits(user['tier'])
-        st.caption(f"今日剩余查询: {limits['max_queries'] - user['query_count']}次")
+        tier_emoji = {"free":"🔓","enhanced":"🔵","complete":"👑"}.get(user['tier'],"🔓")
+        st.success(f"{tier_emoji} {limits['name']}\n{user['email']}")
+        
+        st.caption(f"已用查询: {user['query_count']}/{limits['max_queries']}次" if limits['max_queries'] < 9999 else f"已用查询: {user['query_count']}次(不限)")
         
         if st.button("退出登录", use_container_width=True):
             st.session_state.user = None
@@ -123,19 +123,37 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # ── VIP 升级 ──
-    if st.session_state.user and st.session_state.user['tier'] == 'free':
-        with st.expander("💰 升级VIP"):
-            st.markdown("""
-            **VIP特权 (¥39.9/季):**
-            - ✅ 每档20所院校推荐
-            - ✅ 专业录取详情
-            - ✅ 位次对比分析
-            - ✅ 导出PDF报告
-            - ✅ 无限次查询
-            
-            [点击升级](https://example.com/pay) *(支付接入中)*
-            """)
+    # ── 升级面板 ──
+    if st.session_state.user and st.session_state.user['tier'] != 'complete':
+        current_tier = st.session_state.user['tier']
+        with st.expander("💰 升级版本"):
+            if current_tier == 'free':
+                st.markdown("""
+                **🔵 增强版 ¥29.9（买断·永久）**
+                - ✅ 每档10所院校推荐（vs 免费版3所）
+                - ✅ 专业录取详情（可报/边缘/冲刺）
+                - ✅ 位次对比分析
+                - ✅ 导出PDF报考方案
+                - ✅ 30次完整查询
+                """)
+                st.markdown("""
+                **👑 完全版 ¥59.9（买断·永久）**
+                - ✅ 增强版全部功能
+                - ✅ 每档20所院校推荐
+                - ✅ 不限次数查询
+                - ✅ 专业就业数据（薪资/评分）
+                - ✅ 历年趋势对比
+                - ✅ 优先数据更新
+                """)
+            elif current_tier == 'enhanced':
+                st.markdown("""
+                **👑 完全版 ¥30（增强版补差价升级）**
+                - ✅ 每档20所院校（vs 增强版10所）
+                - ✅ 不限次数查询
+                - ✅ 专业就业数据（薪资/评分）
+                - ✅ 历年趋势对比
+                """)
+            st.caption("💳 支付接入中，暂可联系管理员手动开通")
     
     st.markdown("---")
     
@@ -268,12 +286,15 @@ elif not search_btn:
     - 35个热门专业方向匹配
     - 位次基于部分省份真实一分一段表
     
-    ### 💰 免费 vs VIP
-    | 功能 | 免费 | VIP(¥39.9/季) |
-    |------|------|---------------|
-    | 院校推荐 | 每档3所 | 每档20所 |
-    | 专业详情 | ✗ | ✓ |
-    | 位次对比 | ✗ | ✓ |
-    | 导出报告 | ✗ | ✓ |
-    | 查询次数 | 5次 | 不限 |
+    ### 💰 三档定价（买断制·永久有效）
+    | 功能 | 🔓 免费版 | 🔵 增强版 ¥29.9 | 👑 完全版 ¥59.9 |
+    |------|-----------|----------------|----------------|
+    | 院校推荐 | 每档3所 | 每档10所 | 每档20所 |
+    | 专业详情 | ✗ | ✓ | ✓ |
+    | 位次对比 | ✗ | ✓ | ✓ |
+    | 导出报告 | ✗ | ✓ | ✓ |
+    | 查询次数 | 3次 | 30次 | 不限 |
+    | 就业数据 | ✗ | ✗ | ✓ |
+    | 趋势对比 | ✗ | ✗ | ✓ |
+    | 有效期限 | 永久 | **买断·永久** | **买断·永久** |
     """)
