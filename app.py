@@ -1,346 +1,241 @@
 """
-高考志愿填报建议 - Streamlit Web应用
-功能: 输入分数/位次 → 冲/稳/保三档院校推荐
-含: 免责声明 + 用户注册登录 + 免费/VIP分级
+高考志愿填报助手 - Streamlit Web应用
+免责声明 + 用户系统 + 三档定价 + 录取概率 + 志愿方案 + 院校对比 + PDF导出
 """
-
 import streamlit as st
 import pandas as pd
 import sys, os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from engine import recommend, get_available_years, get_major_categories
+from engine import recommend, get_major_categories
 from auth import register_user, login_user, get_user, increment_query, get_tier_limits
-from features import estimate_probability, generate_plan, get_school_detail, generate_pdf_report
+from features import estimate_probability, generate_plan, get_school_detail, generate_pdf_report, compare_schools
 
 st.set_page_config(page_title="高考志愿填报助手", page_icon="🎓", layout="wide")
 
-# ============================================================
-# Session state
-# ============================================================
-if 'user' not in st.session_state:
-    st.session_state.user = None
-if 'auth_mode' not in st.session_state:
-    st.session_state.auth_mode = 'login'  # login / register
+# ── session state ──
+for key, default in [("user",None), ("result",None), ("plan",None), ("search_done",False)]:
+    if key not in st.session_state:
+        st.session_state[key] = default
 
-# ============================================================
-# 免责声明 — 全局醒目
-# ============================================================
-st.markdown("""
-<div style="
-    background: linear-gradient(135deg, #fff3e0, #ffe0b2);
-    border-left: 5px solid #ff6d00;
-    border-radius: 8px;
-    padding: 14px 18px;
-    margin-bottom: 16px;
-    font-size: 0.92em;
-    line-height: 1.6;
-">
-<strong style="color:#e65100;">⚠️ 重要免责声明</strong><br>
+# ── 免责声明 ──
+st.markdown("""<div style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-left:5px solid #ff6d00;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:.92em;line-height:1.6">
+<strong style="color:#e65100">⚠️ 重要免责声明</strong><br>
 本工具基于公开历史数据提供<strong>参考性</strong>志愿填报建议，<strong>不构成任何报考决策依据</strong>。
-院校录取分数线受当年招生计划、报考人数、政策调整等多重因素影响，实际录取结果可能与推荐存在偏差。
-<strong>最终志愿填报请以各省教育考试院官方发布信息为准。</strong>
-使用本工具即表示您已理解并接受上述风险，开发者不承担因参考本工具建议而产生的任何后果。
-</div>
-""", unsafe_allow_html=True)
+最终志愿填报请以各省教育考试院官方发布信息为准。使用即表示已理解并接受上述风险。
+</div>""", unsafe_allow_html=True)
 
-# ============================================================
-# 样式
-# ============================================================
-st.markdown("""
-<style>
-    .big-title { font-size: 2.0em; font-weight: 700; text-align: center; margin-bottom: 0; }
-    .sub-title { color: #888; text-align: center; margin-bottom: 1.5em; font-size: 0.95em; }
-    .vip-badge { 
-        background: linear-gradient(135deg, #ffd700, #ff8c00); color: #333; 
-        padding: 3px 12px; border-radius: 20px; font-size: 0.75em; font-weight: 700; 
-    }
-    .free-badge { 
-        background: #e0e0e0; color: #666; 
-        padding: 3px 12px; border-radius: 20px; font-size: 0.75em; 
-    }
-    .disclaimer-inline {
-        background: #fff8e1; border: 1px solid #ffcc02; border-radius: 6px;
-        padding: 8px 12px; margin: 8px 0; font-size: 0.82em; color: #795548;
-    }
-    .locked { opacity: 0.5; pointer-events: none; }
-</style>
-""", unsafe_allow_html=True)
+st.markdown("""<style>
+.big-title{font-size:2em;font-weight:700;text-align:center;margin-bottom:0}
+.sub-title{color:#888;text-align:center;margin-bottom:1.5em;font-size:.95em}
+</style>""", unsafe_allow_html=True)
 
-# ============================================================
-# 标题
-# ============================================================
 st.markdown('<div class="big-title">🎓 高考志愿填报助手</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">位次法 + 线差法 · 冲 / 稳 / 保 智能推荐 · 31省3329校</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">位次法+线差法 · 冲/稳/保 智能推荐 · 31省3329校</div>', unsafe_allow_html=True)
 
-# ============================================================
-# 侧边栏
-# ============================================================
+# ── 侧边栏 ──
 with st.sidebar:
-    # ── 登录/注册 ──
     st.header("👤 账户")
-    
     if st.session_state.user:
-        user = st.session_state.user
-        limits = get_tier_limits(user['tier'])
-        tier_emoji = {"free":"🔓","enhanced":"🔵","complete":"👑"}.get(user['tier'],"🔓")
-        st.success(f"{tier_emoji} {limits['name']}\n{user['email']}")
-        
-        st.caption(f"已用查询: {user['query_count']}/{limits['max_queries']}次" if limits['max_queries'] < 9999 else f"已用查询: {user['query_count']}次(不限)")
-        
+        u = st.session_state.user
+        lim = get_tier_limits(u['tier'])
+        emoji = {"free":"🔓","enhanced":"🔵","complete":"👑"}.get(u['tier'],"🔓")
+        st.success(f"{emoji} {lim['name']}\n{u['email']}")
+        maxq = "不限" if lim['max_queries']>=9999 else lim['max_queries']
+        st.caption(f"已用: {u['query_count']}/{maxq}次")
         if st.button("退出登录", use_container_width=True):
-            st.session_state.user = None
+            for k in ["user","result","plan","search_done"]:
+                st.session_state[k] = None if k != "search_done" else False
             st.rerun()
     else:
-        tab1, tab2 = st.tabs(["登录", "注册"])
-        
-        with tab1:
-            login_email = st.text_input("邮箱", key="login_email", placeholder="your@email.com")
-            login_pw = st.text_input("密码", type="password", key="login_pw")
+        t1, t2 = st.tabs(["登录","注册"])
+        with t1:
+            le = st.text_input("邮箱", key="li_email")
+            lp = st.text_input("密码", type="password", key="li_pw")
             if st.button("登录", use_container_width=True):
-                user, err = login_user(login_email, login_pw)
-                if err:
-                    st.error(err)
-                else:
-                    st.session_state.user = user
-                    st.rerun()
-        
-        with tab2:
-            reg_email = st.text_input("邮箱", key="reg_email", placeholder="your@email.com")
-            reg_pw = st.text_input("密码(6位以上)", type="password", key="reg_pw")
+                u, e = login_user(le, lp)
+                if e: st.error(e)
+                else: st.session_state.user = u; st.rerun()
+        with t2:
+            re = st.text_input("邮箱", key="re_email")
+            rp = st.text_input("密码(6位+)", type="password", key="re_pw")
             if st.button("注册", use_container_width=True):
-                if len(reg_pw) < 6:
-                    st.error("密码至少6位")
-                elif '@' not in reg_email:
-                    st.error("请输入有效的邮箱")
+                if len(rp)<6: st.error("密码至少6位")
+                elif '@' not in re: st.error("请输入有效邮箱")
                 else:
-                    user, err = register_user(reg_email, reg_pw)
-                    if err:
-                        st.error(err)
-                    else:
-                        st.session_state.user = user
-                        st.success("注册成功！免费用户可查询5次")
-                        st.rerun()
+                    u, e = register_user(re, rp)
+                    if e: st.error(e)
+                    else: st.session_state.user = u; st.success("注册成功!"); st.rerun()
     
-    st.markdown("---")
-    
-    # ── 升级面板 ──
+    # 升级面板
     if st.session_state.user and st.session_state.user['tier'] != 'complete':
-        current_tier = st.session_state.user['tier']
         with st.expander("💰 升级版本"):
-            if current_tier == 'free':
-                st.markdown("""
-                **🔵 增强版 ¥29.9（买断·永久）**
-                - ✅ 每档10所院校推荐（vs 免费版3所）
-                - ✅ 专业录取详情（可报/边缘/冲刺）
-                - ✅ 位次对比分析
-                - ✅ 导出PDF报考方案
-                - ✅ 30次完整查询
-                """)
-                st.markdown("""
-                **👑 完全版 ¥59.9（买断·永久）**
-                - ✅ 增强版全部功能
-                - ✅ 每档20所院校推荐
-                - ✅ 不限次数查询
-                - ✅ 专业就业数据（薪资/评分）
-                - ✅ 历年趋势对比
-                - ✅ 优先数据更新
-                """)
-            elif current_tier == 'enhanced':
-                st.markdown("""
-                **👑 完全版 ¥30（增强版补差价升级）**
-                - ✅ 每档20所院校（vs 增强版10所）
-                - ✅ 不限次数查询
-                - ✅ 专业就业数据（薪资/评分）
-                - ✅ 历年趋势对比
-                """)
-            st.caption("💳 支付接入中，暂可联系管理员手动开通")
+            t = st.session_state.user['tier']
+            if t == 'free':
+                st.markdown("**🔵 增强版 ¥9.9 买断**\n- 每档10所 · 专业详情 · 位次对比 · 30次查询")
+                st.markdown("**👑 完全版 ¥29.9 买断**\n- 每档20所 · 不限查询 · PDF报告 · 就业数据")
+            else:
+                st.markdown("**👑 完全版 ¥20 补差价**\n- 每档20所 · 不限查询 · PDF报告 · 就业数据")
+            st.caption("💳 支付接入中，联系管理员手动开通")
     
     st.markdown("---")
-    
-    # ── 输入区 ──
     st.header("📋 输入成绩")
     
     comprehensive = {"北京","天津","上海","浙江","山东","海南"}
     phys_hist = {"河北","辽宁","江苏","福建","湖北","湖南","广东","重庆"}
+    all_provs = sorted(comprehensive|phys_hist|{"河南","四川","山西","内蒙古","吉林","黑龙江","安徽","江西","广西","贵州","云南","西藏","陕西","甘肃","青海","宁夏","新疆"})
     
-    province = st.selectbox("省份", sorted(list(comprehensive | phys_hist | {
-        "河南","四川","山西","内蒙古","吉林","黑龙江","安徽","江西",
-        "广西","贵州","云南","西藏","陕西","甘肃","青海","宁夏","新疆"
-    })))
+    province = st.selectbox("省份", all_provs)
+    if province in comprehensive: cats, dc = ["综合"], "综合"
+    elif province in phys_hist: cats, dc = ["物理类","历史类"], "物理类"
+    else: cats, dc = ["理科","文科"], "理科"
+    category = st.selectbox("科类", cats, index=cats.index(dc))
     
-    if province in comprehensive:
-        cat_opts = ["综合"]; default_cat = "综合"
-    elif province in phys_hist:
-        cat_opts = ["物理类","历史类"]; default_cat = "物理类"
-    else:
-        cat_opts = ["理科","文科"]; default_cat = "理科"
-    
-    category = st.selectbox("科类", cat_opts, index=cat_opts.index(default_cat))
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        score = st.number_input("分数", 0, 750, 580)
-    with col2:
-        rank = st.number_input("位次", 0, 9999999, 30000)
+    c1, c2 = st.columns(2)
+    with c1: score = st.number_input("分数", 0, 750, 580)
+    with c2: rank = st.number_input("位次", 0, 9999999, 30000)
     
     major_cats = ["不限"] + get_major_categories()
-    selected_major = st.selectbox("专业方向(可选)", major_cats)
-    major_filter = None if selected_major == "不限" else selected_major
+    major_choice = st.selectbox("专业方向", major_cats)
+    major_filter = None if major_choice == "不限" else major_choice
     
-    st.caption("📊 2023-2025批次线 · 3329所院校 · 9大门类35专业")
-    
+    st.caption("📊 2023-2025批次线 · 3329校 · 9门类35专业")
     search_btn = st.button("🔍 开始推荐", type="primary", use_container_width=True)
 
-# ============================================================
-# 主区域
-# ============================================================
+# ── 主区域 ──
 if search_btn:
-    # 未登录用户也允许1次试用
     user = st.session_state.user
     limits = get_tier_limits(user['tier'] if user else 'free')
-    
     if user and user['query_count'] >= limits['max_queries']:
-        st.warning("免费查询次数已用完，请升级VIP继续使用")
+        st.warning("查询次数已用完，请升级版本")
     else:
-        with st.spinner("正在分析..."):
-            result = recommend(score, rank, province, category, major_category=major_filter)
-        
+        with st.spinner("分析中..."):
+            st.session_state.result = recommend(score, rank, province, category, major_filter)
+            st.session_state.search_done = True
         if user:
             increment_query(user['id'])
             st.session_state.user = get_user(user['id'])
+
+if st.session_state.result:
+    result = st.session_state.result
+    user = st.session_state.user
+    limits = get_tier_limits(user['tier'] if user else 'free')
+    
+    if "error" in result:
+        st.error(result["error"])
+    else:
+        info = result["my_info"]; s = result["summary"]
+        top_n = limits['top_n']; show_m = limits['show_majors']
         
-        if "error" in result:
-            st.error(result["error"])
-        else:
-            info = result["my_info"]
-            s = result["summary"]
-            top_n = limits['top_n']
-            show_majors = limits['show_majors']
+        c1,c2,c3,c4,c5 = st.columns(5)
+        c1.metric("分数", f"{info['score']}分"); c2.metric("位次", f"{info['rank']:,}")
+        c3.metric("批次", info['batch']); c4.metric("批次线", f"{info['batch_line']}分")
+        c5.metric("线差", f"+{info['score']-info['batch_line']}分")
+        
+        mc1,mc2,mc3 = st.columns(3)
+        mc1.metric("🔴 冲", f"{s['冲']}所"); mc2.metric("🔵 稳", f"{s['稳']}所"); mc3.metric("🟢 保", f"{s['保']}所")
+        st.markdown("---")
+        
+        if not show_m:
+            st.info("🔓 免费版每档3所 · 升级增强版查看专业详情")
+        
+        for tag, label in [("冲","🔴 冲"), ("稳","🔵 稳"), ("保","🟢 保")]:
+            data = result.get(tag, [])
+            if not data: st.info(f"{label} 暂无"); continue
+            st.markdown(f"### {label} ({len(data)}所)")
+            rows = []
+            for d in data[:top_n]:
+                prob, _ = estimate_probability(d['composite'], info['batch'])
+                row = {"院校":d['name'],"层次":d['level'],"城市":d['city'],
+                       "均分":f"{d['uni_avg_score']}","综合":f"{d['composite']:.0f}","概率":f"{prob}%"}
+                if show_m: row["🟢可报"] = ", ".join(d.get("majors_bao",[])) or "-"
+                rows.append(row)
+            st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+            if len(data) > top_n:
+                st.caption(f"显示前{top_n}所，共{len(data)}所。升级查看全部")
+        
+        # ── 志愿方案 ──
+        if show_m:
+            st.markdown("---"); st.markdown("### 📋 志愿方案生成器")
+            if st.button("🎯 生成我的志愿方案", type="secondary"):
+                st.session_state.plan = generate_plan(result, info['province'], info['category'], info['score'])
             
-            # ── 考生信息卡 ──
-            st.markdown("### 📊 你的位置")
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("分数", f"{info['score']}分")
-            c2.metric("位次", f"{info['rank']:,}")
-            c3.metric("批次", info['batch'])
-            c4.metric("批次线", f"{info['batch_line']}分")
-            c5.metric("线差", f"+{info['score'] - info['batch_line']}分")
-            
-            # ── 概览 ──
-            st.markdown("### 🎯 推荐概览")
-            mc1, mc2, mc3 = st.columns(3)
-            mc1.metric("🔴 冲", f"{s['冲']} 所", help="录取概率较低")
-            mc2.metric("🔵 稳", f"{s['稳']} 所", help="录取概率较高")
-            mc3.metric("🟢 保", f"{s['保']} 所", help="录取概率很高")
-            
-            st.markdown("---")
-            
-            # ── 免费用户限制提示 ──
-            if not show_majors:
-                st.info("🔓 免费版每档显示3所 · 专业详情仅VIP可见 · 升级查看全部")
-            
-            # ── 推荐表(含概率) ──
-            def render_table(label, data, show_majors_detail, max_rows):
-                if not data:
-                    st.info(f"{label} 暂无数据")
-                    return
+            if st.session_state.plan:
+                plan = st.session_state.plan
+                # 方案分析摘要
+                a = plan.get("analysis", {})
+                st.info(f"📊 方案分析: {a.get('strategy','')} · 平均录取概率{a.get('avg_probability','')}% · {a.get('tip','')}")
                 
-                st.markdown(f"### {label} ({len(data)}所)")
+                for col, tag, emoji in zip(st.columns(3), ["冲","稳","保"], ["🔴","🔵","🟢"]):
+                    with col:
+                        st.markdown(f"**{emoji} {tag}**")
+                        for s in plan[tag]:
+                            with st.expander(f"{s['name']} ({s['level']})"):
+                                st.markdown(f"📍 {s['city']} · {s['type']}")
+                                st.markdown(f"📊 均分{s['score']} · 综合{s['composite']:.0f} · 概率{s['probability']}%")
+                                st.markdown(f"📈 {s['rank_desc']} · 分差{s['score_gap']:+d}")
+                                if s.get('majors'):
+                                    st.markdown(f"🎯 推荐: {', '.join(s['majors'])}")
+                                if s.get('all_majors_analyzed'):
+                                    st.caption(f"专业分析: {', '.join(s['all_majors_analyzed'][:5])}")
                 
-                rows = []
-                for d in data[:max_rows]:
-                    prob, prob_label = estimate_probability(d['composite'], info['batch'])
-                    row = {
-                        "院校": d["name"], "层次": d["level"], "城市": d["city"],
-                        "近3年均分": f"{d['uni_avg_score']}",
-                        "综合分": f"{d['composite']:.0f}",
-                        "录取概率": f"{prob}%",
-                    }
-                    if show_majors_detail:
-                        row["🟢可报专业"] = ", ".join(d.get("majors_bao", [])) or "-"
-                    rows.append(row)
-                
-                df = pd.DataFrame(rows)
-                st.dataframe(df, hide_index=True, use_container_width=True)
-                
-                if len(data) > max_rows:
-                    st.caption(f"仅显示前{max_rows}所，共{len(data)}所。升级版本查看全部")
-            
-            render_table("🔴 冲", result["冲"], show_majors, top_n)
-            render_table("🔵 稳", result["稳"], show_majors, top_n)
-            render_table("🟢 保", result["保"], show_majors, top_n)
-            
-            # ── 每次推荐都跟免责 ──
-            st.markdown("---")
-            
-            # ── 志愿方案生成器 ──
-            if show_majors:
-                st.markdown("### 📋 一键生成志愿方案")
-                if st.button("🎯 生成我的志愿填报方案", type="secondary"):
-                    plan = generate_plan(result, province, category, score)
-                    st.session_state['plan'] = plan
-                    
-                    col_a, col_b, col_c = st.columns(3)
-                    for col, tag, emoji in [(col_a,"冲","🔴"), (col_b,"稳","🔵"), (col_c,"保","🟢")]:
-                        with col:
-                            st.markdown(f"**{emoji} {tag}**")
-                            for s in plan[tag]:
-                                st.markdown(f"- **{s['name']}** ({s['level']})\n  {s['city']} · {s['score']}分 · 概率{s['probability']}%")
-                    
-                    # PDF导出
-                    if limits.get('export'):
-                        output = os.path.join(os.path.dirname(__file__), f"志愿方案_{province}_{category}_{score}分.docx")
-                        generate_pdf_report(plan, info, output)
-                        with open(output, "rb") as f:
-                            st.download_button("📥 下载PDF报告", f, file_name=f"志愿方案_{province}_{category}_{score}分.docx")
+                if limits.get('export'):
+                    pdf_path = os.path.join(os.path.dirname(__file__), f"志愿方案_{info['province']}_{info['score']}分.pdf")
+                    try:
+                        generate_pdf_report(plan, info, pdf_path)
+                        with open(pdf_path, "rb") as f:
+                            st.download_button("📥 下载PDF报告", f, file_name=os.path.basename(pdf_path))
+                    except Exception as ex:
+                        st.error(f"PDF生成失败: {ex}")
             
             # ── 院校对比 ──
-            if show_majors:
-                st.markdown("---")
-                st.markdown("### 🔍 院校对比")
-                all_names = [s['name'] for s in (result.get('冲',[]) + result.get('稳',[]) + result.get('保',[]))[:50]]
-                compare_schools = st.multiselect("选择2-3所院校对比", all_names, max_selections=3)
+            st.markdown("---"); st.markdown("### 🔍 院校对比")
+            all_names = [s['name'] for s in (result.get('冲',[])+result.get('稳',[])+result.get('保',[]))[:50]]
+            picks = st.multiselect("选2-3所对比", all_names, max_selections=3, key="compare")
+            if picks:
+                details, summary = compare_schools(picks)
+                if summary:
+                    st.success(f"📊 {summary['comparison_text']}")
                 
-                if compare_schools:
-                    cols = st.columns(len(compare_schools))
-                    for i, name in enumerate(compare_schools):
-                        detail = get_school_detail(name)
-                        if detail:
-                            with cols[i]:
-                                st.markdown(f"**{detail['name']}**")
-                                st.caption(f"{detail['level']} · {detail['city']} · {'公办' if detail['is_public'] else '民办'}")
-                                st.caption(f"类型: {detail['type']}")
-                                if detail['majors']:
-                                    st.caption("优势专业:")
-                                    for m in detail['majors'][:3]:
-                                        st.caption(f"  {m['name']} (就业{m['employment_score']}分 ¥{m['avg_salary']:,})")
-            
-            # 免责
-            st.warning("⚠️ 以上推荐基于历史数据估算，仅供参考。实际录取受当年招生计划、报考热度、政策调整等多重因素影响，请以各省教育考试院官方发布为准。")
+                if details:
+                    cols = st.columns(len(details))
+                    for i, d in enumerate(details):
+                        with cols[i]:
+                            st.markdown(f"### {d['name']}")
+                            st.caption(" · ".join(d['tags']))
+                            st.markdown(f"📍 {d['city']} | 竞争力: {d['competitiveness']}")
+                            
+                            # 录取趋势
+                            if d.get('trend'):
+                                st.markdown("**📈 录取趋势:**")
+                                for y, t in sorted(d['trend'].items(), reverse=True):
+                                    sc = f"{t['avg_score']}分" if t['avg_score'] else "-"
+                                    rk = f"{t['avg_rank']:,}位" if t['avg_rank'] else "-"
+                                    st.caption(f"  {y}: {sc} / {rk}")
+                            
+                            # 优势专业
+                            if d['majors']:
+                                st.markdown("**🎯 优势专业:**")
+                                for m in d['majors'][:5]:
+                                    offset_str = f"(难度{m['difficulty_offset']:+d})" if m.get('difficulty_offset') else ""
+                                    st.caption(f"  {m['name']} 就业{m['employment_score']}分 ¥{m['avg_salary']:,} {offset_str}")
+        
+        st.markdown("---")
+        st.warning("⚠️ 以上推荐基于历史数据估算，仅供参考。请以各省教育考试院官方发布为准。")
 
 elif not search_btn:
-    st.info("👈 在左侧输入分数和位次，点击「开始推荐」查看结果")
+    st.info("👈 输入分数和位次，点击「开始推荐」")
     st.markdown("""
-    ### 🧠 算法说明
-    **位次法** (权重60%): 比较你的全省位次与院校历年录取位次
-    **线差法** (权重40%): 比较你的分数-批次线差值与院校线差
-    
-    ### 📊 数据说明
-    - 覆盖31省份2023-2025年批次线
-    - 收录3329所高等院校(含本科/专科)
-    - 35个热门专业方向匹配
-    - 位次基于部分省份真实一分一段表
-    
-    ### 💰 三档定价（买断制·永久有效）
-    | 功能 | 🔓 免费版 | 🔵 增强版 ¥29.9 | 👑 完全版 ¥59.9 |
-    |------|-----------|----------------|----------------|
-    | 院校推荐 | 每档3所 | 每档10所 | 每档20所 |
-    | 专业详情 | ✗ | ✓ | ✓ |
-    | 位次对比 | ✗ | ✓ | ✓ |
-    | 导出报告 | ✗ | ✓ | ✓ |
-    | 查询次数 | 3次 | 30次 | 不限 |
-    | 就业数据 | ✗ | ✗ | ✓ |
-    | 趋势对比 | ✗ | ✗ | ✓ |
-    | 有效期限 | 永久 | **买断·永久** | **买断·永久** |
+### 🧠 算法说明
+**位次法**(权重60%): 比较全省位次与院校录取位次 · **线差法**(权重40%): 比较分数-批次线差值
+
+### 💰 三档定价（买断制·永久有效）
+| 功能 | 🔓 免费版 | 🔵 增强版 ¥9.9 | 👑 完全版 ¥29.9 |
+|------|-----------|---------------|----------------|
+| 院校推荐 | 每档3所 | 每档10所 | 每档20所 |
+| 专业详情 | ✗ | ✓ | ✓ |
+| 位次对比 | ✗ | ✓ | ✓ |
+| PDF报告 | ✗ | ✗ | ✓ |
+| 查询次数 | 3次 | 30次 | 不限 |
+| 就业数据 | ✗ | ✗ | ✓ |
     """)

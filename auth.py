@@ -110,13 +110,13 @@ def get_tier_limits(tier):
         },
         "enhanced": {
             "name": "增强版", "top_n": 10, "show_majors": True,
-            "show_rank": True, "export": True, "max_queries": 30,
-            "price": "¥29.9", "color": "#1a73e8",
+            "show_rank": True, "export": False, "max_queries": 30,
+            "price": "¥9.9", "color": "#1a73e8",
         },
         "complete": {
             "name": "完全版", "top_n": 20, "show_majors": True,
             "show_rank": True, "export": True, "max_queries": 9999,
-            "price": "¥59.9", "color": "#ff8c00",
+            "price": "¥29.9", "color": "#ff8c00",
         },
     }
     return tiers.get(tier, tiers["free"])

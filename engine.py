@@ -292,7 +292,7 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
             "稳": len(wen),
             "保": len(bao),
         },
-        "冲": chong[:8],
-        "稳": wen[:8],
-        "保": bao[:8],
+        "冲": chong[:50],
+        "稳": wen[:50],
+        "保": bao[:50],
     }
