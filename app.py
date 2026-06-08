@@ -11,6 +11,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from engine import recommend, get_available_years, get_major_categories
 from auth import register_user, login_user, get_user, increment_query, get_tier_limits
+from features import estimate_probability, generate_plan, get_school_detail, generate_pdf_report
 
 st.set_page_config(page_title="高考志愿填报助手", page_icon="🎓", layout="wide")
 
@@ -239,7 +240,7 @@ if search_btn:
             if not show_majors:
                 st.info("🔓 免费版每档显示3所 · 专业详情仅VIP可见 · 升级查看全部")
             
-            # ── 推荐表 ──
+            # ── 推荐表(含概率) ──
             def render_table(label, data, show_majors_detail, max_rows):
                 if not data:
                     st.info(f"{label} 暂无数据")
@@ -249,21 +250,22 @@ if search_btn:
                 
                 rows = []
                 for d in data[:max_rows]:
+                    prob, prob_label = estimate_probability(d['composite'], info['batch'])
                     row = {
                         "院校": d["name"], "层次": d["level"], "城市": d["city"],
                         "近3年均分": f"{d['uni_avg_score']}",
                         "综合分": f"{d['composite']:.0f}",
+                        "录取概率": f"{prob}%",
                     }
                     if show_majors_detail:
                         row["🟢可报专业"] = ", ".join(d.get("majors_bao", [])) or "-"
-                        row["🔵边缘专业"] = ", ".join(d.get("majors_wen", [])) or "-"
                     rows.append(row)
                 
                 df = pd.DataFrame(rows)
                 st.dataframe(df, hide_index=True, use_container_width=True)
                 
                 if len(data) > max_rows:
-                    st.caption(f"仅显示前{max_rows}所，共{len(data)}所。升级VIP查看全部")
+                    st.caption(f"仅显示前{max_rows}所，共{len(data)}所。升级版本查看全部")
             
             render_table("🔴 冲", result["冲"], show_majors, top_n)
             render_table("🔵 稳", result["稳"], show_majors, top_n)
@@ -271,6 +273,50 @@ if search_btn:
             
             # ── 每次推荐都跟免责 ──
             st.markdown("---")
+            
+            # ── 志愿方案生成器 ──
+            if show_majors:
+                st.markdown("### 📋 一键生成志愿方案")
+                if st.button("🎯 生成我的志愿填报方案", type="secondary"):
+                    plan = generate_plan(result, province, category, score)
+                    st.session_state['plan'] = plan
+                    
+                    col_a, col_b, col_c = st.columns(3)
+                    for col, tag, emoji in [(col_a,"冲","🔴"), (col_b,"稳","🔵"), (col_c,"保","🟢")]:
+                        with col:
+                            st.markdown(f"**{emoji} {tag}**")
+                            for s in plan[tag]:
+                                st.markdown(f"- **{s['name']}** ({s['level']})\n  {s['city']} · {s['score']}分 · 概率{s['probability']}%")
+                    
+                    # PDF导出
+                    if limits.get('export'):
+                        output = os.path.join(os.path.dirname(__file__), f"志愿方案_{province}_{category}_{score}分.docx")
+                        generate_pdf_report(plan, info, output)
+                        with open(output, "rb") as f:
+                            st.download_button("📥 下载PDF报告", f, file_name=f"志愿方案_{province}_{category}_{score}分.docx")
+            
+            # ── 院校对比 ──
+            if show_majors:
+                st.markdown("---")
+                st.markdown("### 🔍 院校对比")
+                all_names = [s['name'] for s in (result.get('冲',[]) + result.get('稳',[]) + result.get('保',[]))[:50]]
+                compare_schools = st.multiselect("选择2-3所院校对比", all_names, max_selections=3)
+                
+                if compare_schools:
+                    cols = st.columns(len(compare_schools))
+                    for i, name in enumerate(compare_schools):
+                        detail = get_school_detail(name)
+                        if detail:
+                            with cols[i]:
+                                st.markdown(f"**{detail['name']}**")
+                                st.caption(f"{detail['level']} · {detail['city']} · {'公办' if detail['is_public'] else '民办'}")
+                                st.caption(f"类型: {detail['type']}")
+                                if detail['majors']:
+                                    st.caption("优势专业:")
+                                    for m in detail['majors'][:3]:
+                                        st.caption(f"  {m['name']} (就业{m['employment_score']}分 ¥{m['avg_salary']:,})")
+            
+            # 免责
             st.warning("⚠️ 以上推荐基于历史数据估算，仅供参考。实际录取受当年招生计划、报考热度、政策调整等多重因素影响，请以各省教育考试院官方发布为准。")
 
 elif not search_btn:
