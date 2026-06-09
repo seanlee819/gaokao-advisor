@@ -1,0 +1,109 @@
+<!-- 我的页面 -->
+<view class="container">
+  <!-- 未登录 -->
+  <view wx:if="{{!user}}">
+    <view class="header">
+      <text class="title">🎓 我的看金榜</text>
+      <text class="subtitle">登录解锁完整功能</text>
+    </view>
+
+    <view class="card">
+      <view class="form-row">
+        <text class="label">邮箱</text>
+        <input class="input" type="text" placeholder="请输入邮箱" value="{{email}}" bindinput="onEmailInput" />
+      </view>
+      <view class="form-row">
+        <text class="label">密码</text>
+        <input class="input" type="password" placeholder="请输入密码" value="{{password}}" bindinput="onPwdInput" />
+      </view>
+      <button class="btn-primary" bindtap="onLogin">{{mode === 'login' ? '登录' : '注册'}}</button>
+      <view class="switch-text" bindtap="onSwitchMode">
+        {{mode === 'login' ? '还没有账号？去注册' : '已有账号？去登录'}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 已登录 -->
+  <view wx:else>
+    <view class="user-card card">
+      <text class="user-name">{{user.nickname || user.email}}</text>
+      <text class="user-tier {{user.tier}}">{{tierName}}</text>
+      <view class="user-stats">
+        <text>已用 {{user.query_count}} / {{limits.max_queries === 9999 ? '不限' : limits.max_queries}} 次</text>
+      </view>
+    </view>
+
+    <!-- 升级面板 -->
+    <view class="card" wx:if="{{user.tier !== 'complete'}}">
+      <text class="section-title">💰 升级版本（买断制·永久有效）</text>
+
+      <view class="plan" wx:if="{{user.tier === 'free'}}">
+        <view class="plan-header">
+          <text class="plan-name">🔵 增强版</text>
+          <text class="plan-price">¥9.9</text>
+        </view>
+        <view class="plan-features">
+          <text>✓ 每档10所院校</text>
+          <text>✓ 专业详情 + 位次对比</text>
+          <text>✓ 30次查询</text>
+        </view>
+        <button class="btn-upgrade" bindtap="showUpgrade" data-tier="enhanced" data-price="9.9">升级到增强版</button>
+      </view>
+
+      <view class="plan">
+        <view class="plan-header">
+          <text class="plan-name">👑 完全版</text>
+          <text class="plan-price">¥{{user.tier === 'free' ? '29.9' : '20'}}</text>
+        </view>
+        <view class="plan-features">
+          <text>✓ 每档20所院校</text>
+          <text>✓ 不限查询次数</text>
+          <text>✓ PDF报告导出</text>
+          <text>✓ 就业数据</text>
+        </view>
+        <button class="btn-upgrade gold" bindtap="showUpgrade" data-tier="complete" data-price="{{completePrice}}">升级到完全版</button>
+      </view>
+    </view>
+
+    <!-- 已完全版 -->
+    <view class="card crown-card" wx:if="{{user.tier === 'complete'}}">
+      <text class="crown">👑</text>
+      <text class="section-title">完全版用户</text>
+      <text class="desc">无限查询 · PDF导出 · 所有功能已解锁</text>
+    </view>
+
+    <button class="btn-logout" bindtap="onLogout">退出登录</button>
+
+    <!-- 查询历史 -->
+    <view class="card" wx:if="{{history.length > 0}}">
+      <text class="section-title">📝 最近查询</text>
+      <view class="history-item" wx:for="{{history}}" wx:key="index" bindtap="revisit" data-index="{{index}}">
+        <view class="history-info">
+          <text class="history-main">{{item.province}} {{item.category}} {{item.score}}分</text>
+          <text class="history-sub">{{item.time}} · 共{{item.summary.total}}所</text>
+        </view>
+        <text class="history-arrow">→</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 升级弹窗 -->
+  <view class="modal" wx:if="{{showPayModal}}">
+    <view class="modal-content">
+      <text class="modal-title">升级到{{payTierName}}</text>
+      <text class="modal-price">¥{{payPrice}}</text>
+      <view class="modal-steps">
+        <text class="step">📋 请按以下步骤操作：</text>
+        <text class="step">1. 复制您的账号信息</text>
+        <text class="step code">{{user.email}}</text>
+        <button class="btn-copy" bindtap="copyEmail">📋 复制账号</button>
+        <text class="step">2. 添加管理员微信完成支付</text>
+        <text class="step code wxid">微信号: seanlee819</text>
+        <button class="btn-copy" bindtap="copyWxid">📋 复制微信号</button>
+        <text class="step">3. 发送您的账号 + 想要升级的版本</text>
+        <text class="step hint">管理员收到后会立即为您开通</text>
+      </view>
+      <button class="btn-close" bindtap="closeModal">我知道了</button>
+    </view>
+  </view>
+</view>

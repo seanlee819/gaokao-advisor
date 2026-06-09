@@ -1,0 +1,63 @@
+<!-- 结果页 -->
+<view class="container">
+  <!-- 顶部信息 -->
+  <view class="result-header">
+    <text class="score-badge">{{info.score}}分</text>
+    <text class="info-text">{{info.province}} · {{info.category}} · 位次{{info.rank}}</text>
+    <text class="info-text">{{info.batch}} (分数线{{info.batch_line}})</text>
+  </view>
+
+  <!-- Tab 切换 -->
+  <view class="tabs">
+    <view class="tab {{activeTab==='chong'?'active':''}}" bindtap="switchTab" data-tab="chong">
+      🔴 冲 ({{chong.length}})
+    </view>
+    <view class="tab {{activeTab==='wen'?'active':''}}" bindtap="switchTab" data-tab="wen">
+      🟡 稳 ({{wen.length}})
+    </view>
+    <view class="tab {{activeTab==='bao'?'active':''}}" bindtap="switchTab" data-tab="bao">
+      🟢 保 ({{bao.length}})
+    </view>
+  </view>
+
+  <!-- 学校列表 -->
+  <view class="school-list">
+    <view class="card school-card" wx:for="{{displayList}}" wx:key="university_id" bindtap="goDetail" data-id="{{item.university_id}}">
+      <view class="school-header">
+        <text class="school-name">{{item.name}}</text>
+        <text class="tag tag-{{tagClass}}">
+          {{tagText}}
+        </text>
+      </view>
+      <view class="school-meta">
+        <text class="meta-item">{{item.level || '本科'}}</text>
+        <text class="meta-item">{{item.type}}</text>
+        <text class="meta-item">{{item.city}}</text>
+        <text wx:if="{{item.is_public}}" class="meta-item tag-public">公办</text>
+      </view>
+      <view class="school-scores">
+        <view class="score-item">
+          <text class="score-label">录取均分</text>
+          <text class="score-value">{{item.uni_avg_score}}</text>
+        </view>
+        <view class="score-item">
+          <text class="score-label">录取位次</text>
+          <text class="score-value">{{item.uni_avg_rank || '—'}}</text>
+        </view>
+        <view class="score-item">
+          <text class="score-label">综合评分</text>
+          <text class="score-value">{{item.composite}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty" wx:if="{{displayList.length === 0}}">
+      <text>暂无此档位学校</text>
+    </view>
+  </view>
+
+  <!-- 免责声明 -->
+  <view class="disclaimer-foot">
+    <text>⚠️ 以上推荐基于历史数据，仅供参考，不构成报考决策依据。请以各省教育考试院官方信息为准。</text>
+  </view>
+</view>

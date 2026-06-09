@@ -5,7 +5,6 @@
 
 from database import get_db
 
-
 def get_province_lines(province, year, category):
     """获取某省某年某科类的批次线"""
     conn = get_db()
@@ -15,25 +14,19 @@ def get_province_lines(province, year, category):
            ORDER BY score DESC""",
         (province, year, category)
     ).fetchall()
-    conn.close()
     return {r["batch"]: {"score": r["score"], "rank": r["rank"]} for r in rows}
-
 
 def get_available_years():
     """获取数据库中可用的年份列表"""
     conn = get_db()
     rows = conn.execute("SELECT DISTINCT year FROM province_lines ORDER BY year DESC").fetchall()
-    conn.close()
     return [r["year"] for r in rows]
-
 
 def get_major_categories():
     """获取所有专业门类"""
     conn = get_db()
     rows = conn.execute("SELECT DISTINCT category FROM majors ORDER BY category").fetchall()
-    conn.close()
     return [r["category"] for r in rows]
-
 
 def get_uni_advantage_majors(uni_id):
     """获取某院校的优势专业列表(含难度偏移)"""
@@ -46,9 +39,7 @@ def get_uni_advantage_majors(uni_id):
            ORDER BY m.employment_score DESC""",
         (uni_id,)
     ).fetchall()
-    conn.close()
     return [dict(r) for r in rows]
-
 
 def get_university_admissions(university_id, province, category, years=3):
     """获取某院校在某省近N年的录取数据"""
@@ -64,9 +55,7 @@ def get_university_admissions(university_id, province, category, years=3):
             ORDER BY year DESC""",
         (university_id, province, category, *target_years)
     ).fetchall()
-    conn.close()
     return [dict(r) for r in rows]
-
 
 def calculate_rank_score(my_rank, uni_avg_rank):
     """位次法评分: 0-100, 越高越稳。平滑版本避免极端聚集"""
@@ -81,7 +70,6 @@ def calculate_rank_score(my_rank, uni_avg_rank):
         ratio = uni_avg_rank / my_rank
         return max(0, 50 * ratio)
 
-
 def calculate_diff_score(my_score, batch_line, uni_avg_score):
     """线差法评分: 0-100, 越高越稳。平滑版本"""
     if not batch_line or not uni_avg_score:
@@ -93,7 +81,6 @@ def calculate_diff_score(my_score, batch_line, uni_avg_score):
         return min(100, 50 + diff_gap * 3)  # 每超1分+3，系数从5降到3
     else:
         return max(0, 50 + diff_gap * 3)    # 每低1分-3
-
 
 def recommend(my_score, my_rank, province, category, major_category=None, top_n=20):
     """
@@ -110,14 +97,12 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
     conn = get_db()
     available_years = get_available_years()
     if not available_years:
-        conn.close()
         return {"error": "数据库无数据，请先导入数据"}
 
     latest_year = available_years[0]
 
     lines = get_province_lines(province, latest_year, category)
     if not lines:
-        conn.close()
         return {"error": f"无{province} {latest_year}年{category}批次线数据"}
 
     sorted_batches = sorted(lines.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -128,7 +113,6 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
             break
 
     if not my_batch:
-        conn.close()
         return {"error": "分数未达到任何批次线"}
 
     batch_line_score = lines[my_batch]["score"]
@@ -174,9 +158,15 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
         diff_score = calculate_diff_score(my_score, batch_line_score, uni_avg_score)
         composite = round(rank_score * 0.6 + diff_score * 0.4, 1)
 
-        # 专业匹配加分
-        if major_category and any(m["category"] == major_category for m in advantage_majors):
-            composite = min(100, composite + 5)
+        # 专业匹配加分: 加大权重，让专业选择真正影响排序
+        has_matching_major = False
+        if major_category and advantage_majors:
+            has_matching_major = any(m["category"] == major_category for m in advantage_majors)
+        if major_category:
+            if has_matching_major:
+                composite = min(100, composite + 20)   # 匹配专业: +20 (原+5太弱)
+            else:
+                composite = max(5, composite - 8)      # 无关专业: -8
 
         # 非一本批次挑战因子
         if my_batch == "本科二批":
@@ -187,23 +177,15 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
         # 高分上限 + 低下限
         composite = max(5, min(92, composite))
 
-        # 批次自适应阈值: 留5分过渡带, 边界学校由强制多样化处理
-        if my_batch in ("本科一批", "本科批", "一段线"):
-            bao_threshold = 70
-            wen_threshold = 35   # 原40, 与冲拉开5分gap
-        elif my_batch == "本科二批":
-            bao_threshold = 60
-            wen_threshold = 25   # 原30
-        else:  # 专科/二段线
-            bao_threshold = 55
-            wen_threshold = 20   # 原25
+        # ── 用录取分差做分档（直观可解释）──
+        score_gap = my_score - uni_avg_score  # 正=我比学校高
 
-        if composite >= bao_threshold:
-            category_label = "保"
-        elif composite >= wen_threshold:
-            category_label = "稳"
-        else:
+        if score_gap <= 5:        # 学校分接近或高于我 → 冲击
             category_label = "冲"
+        elif score_gap <= 25:     # 我比学校高6-25分 → 匹配
+            category_label = "稳"
+        else:                     # 我比学校高25+分 → 保底
+            category_label = "保"
 
         results.append({
             "university_id": uid,
@@ -221,6 +203,7 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
             "diff_score": round(diff_score, 1),
             "composite": composite,
             "category": category_label,
+            "major_match": has_matching_major,
             "advantage_majors": [m["name"] for m in advantage_majors],
             # 具体专业推荐: 冲/稳/保 三个档位
             "majors_bao": [
@@ -240,7 +223,6 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
             ],
         })
 
-    conn.close()
     # 排序: 综合评分降序 (高=安全)
     results.sort(key=lambda x: x["composite"], reverse=True)
 
@@ -249,32 +231,34 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
     bao = [r for r in results if r["category"] == "保"]
 
     # 强制多样化: 如果某档为空且总数≥10
-    # 核心原则: 低composite=难进→冲, 中composite→稳, 高composite=安全→保
     total_results = len(results)
     if total_results >= 10:
         if not chong:
-            # 冲 = 最难进的 = composite最低的 → 从列表尾部取
+            # 冲 = 录取分最高的 → 按score_gap升序(负=学校高于我)
             n_chong = min(8, total_results // 5)
-            for i in range(n_chong):
-                results[-(i+1)]["category"] = "冲"
+            candidates = [r for r in results if r["category"] != "冲"]
+            candidates.sort(key=lambda x: x.get("uni_avg_score", 0), reverse=True)
+            for i in range(min(n_chong, len(candidates))):
+                candidates[i]["category"] = "冲"
         if not wen:
-            # 稳 = 中段 → 取composite最接近均值的
             n_wen = min(8, total_results // 4)
-            avg_comp = sum(r["composite"] for r in results) / total_results
             candidates = [r for r in results if r["category"] not in ("稳",)]
-            candidates.sort(key=lambda x: abs(x["composite"] - avg_comp))
+            candidates.sort(key=lambda x: abs(x.get("uni_avg_score", 0) - (my_score - 15)))
             for i in range(min(n_wen, len(candidates))):
                 candidates[i]["category"] = "稳"
         if not bao:
-            # 保 = 最安全的 = composite最高的 → 从列表头部取
             n_bao = min(8, total_results // 5)
-            for i in range(n_bao):
-                results[i]["category"] = "保"
+            candidates = [r for r in results if r["category"] != "保"]
+            candidates.sort(key=lambda x: x.get("uni_avg_score", 999))
+            for i in range(min(n_bao, len(candidates))):
+                candidates[i]["category"] = "保"
 
-    # 重新分组后，各组内按composite降序排列
-    chong = sorted([r for r in results if r["category"] == "冲"], key=lambda x: x["composite"], reverse=True)
-    wen = sorted([r for r in results if r["category"] == "稳"], key=lambda x: x["composite"], reverse=True)
-    bao = sorted([r for r in results if r["category"] == "保"], key=lambda x: x["composite"], reverse=True)
+    # 重新分组后，各组内排序: 专业匹配优先 → 综合分降序
+    def tier_sort_key(r):
+        return (r.get("major_match", False), r["composite"])
+    chong = sorted([r for r in results if r["category"] == "冲"], key=tier_sort_key, reverse=True)
+    wen = sorted([r for r in results if r["category"] == "稳"], key=tier_sort_key, reverse=True)
+    bao = sorted([r for r in results if r["category"] == "保"], key=tier_sort_key, reverse=True)
 
     return {
         "my_info": {

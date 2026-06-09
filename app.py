@@ -148,6 +148,8 @@ if st.session_state.result:
                 prob, _ = estimate_probability(d['composite'], info['batch'])
                 row = {"院校":d['name'],"层次":d['level'],"城市":d['city'],
                        "均分":f"{d['uni_avg_score']}","综合":f"{d['composite']:.0f}","概率":f"{prob}%"}
+                if major_filter:  # 有专业偏好时显示匹配标识
+                    row["专业"] = "✅" if d.get("major_match") else "➖"
                 if show_m: row["🟢可报"] = ", ".join(d.get("majors_bao",[])) or "-"
                 rows.append(row)
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)

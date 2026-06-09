@@ -1,0 +1,65 @@
+<!-- 院校详情页 -->
+<view class="container">
+  <view class="loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:if="{{!loading && uni}}">
+    <!-- 头部 -->
+    <view class="detail-header">
+      <text class="uni-name">{{uni.name}}</text>
+      <view class="uni-tags">
+        <text class="tag-level">{{uni.level || '本科'}}</text>
+        <text class="tag-type">{{uni.type}}</text>
+        <text class="tag-city">{{uni.city}}</text>
+        <text wx:if="{{uni.is_public}}" class="tag-public">公办</text>
+        <text wx:else class="tag-private">民办</text>
+      </view>
+    </view>
+
+    <!-- 录取历史 -->
+    <view class="card">
+      <text class="section-title">📊 近三年录取数据</text>
+      <text class="section-sub">{{province}} · {{category}}</text>
+      <view class="history-table" wx:if="{{history.length > 0}}">
+        <view class="history-row header">
+          <text class="h-cell">年份</text>
+          <text class="h-cell">批次</text>
+          <text class="h-cell">最低分</text>
+          <text class="h-cell">最低位次</text>
+        </view>
+        <view class="history-row" wx:for="{{history}}" wx:key="year">
+          <text class="h-cell">{{item.year}}</text>
+          <text class="h-cell">{{item.batch}}</text>
+          <text class="h-cell score">{{item.min_score}}</text>
+          <text class="h-cell">{{item.min_rank || '—'}}</text>
+        </view>
+      </view>
+      <text class="empty" wx:else>暂无该省份录取数据</text>
+    </view>
+
+    <!-- 优势专业 -->
+    <view class="card" wx:if="{{majors.length > 0}}">
+      <text class="section-title">🎯 优势专业</text>
+      <view class="major-item" wx:for="{{majors}}" wx:key="name">
+        <view class="major-header">
+          <text class="major-name">{{item.name}}</text>
+          <text wx:if="{{item.is_advantage}}" class="badge-adv">优势专业</text>
+        </view>
+        <view class="major-meta">
+          <text class="meta">{{item.category}}</text>
+          <text wx:if="{{item.employment_score}}" class="meta">就业评分 {{item.employment_score}}</text>
+          <text wx:if="{{item.avg_salary}}" class="meta">均薪 ¥{{item.avg_salary}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 招生政策提示 -->
+    <view class="card policy-card">
+      <text class="section-title">📋 报考须知</text>
+      <text class="policy-text">• 以上录取数据仅供参考，每年分数线会因报考人数、试题难度等因素波动，请以官方公布为准</text>
+      <text class="policy-text">• {{uni.level === '双一流' || uni.level === '985' || uni.level === '211' ? '该校为重点院校，建议优先了解其招生章程中的特殊要求（如单科成绩、体检限制等）' : '建议查阅该校招生官网了解具体专业录取规则'}}</text>
+      <text class="policy-text">• 位次法的参考价值通常高于分数法，建议以位次为主要参考依据</text>
+    </view>
+  </block>
+</view>

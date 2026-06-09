@@ -102,7 +102,6 @@ def generate_plan(result, province, category, score):
     
     return plan
 
-
 # ============================================================
 # 3. 院校对比数据（增强版）
 # ============================================================
@@ -111,7 +110,6 @@ def get_school_detail(school_name):
     conn = get_db()
     uni = conn.execute("SELECT * FROM universities WHERE name=?", (school_name,)).fetchone()
     if not uni:
-        conn.close()
         return None
     
     # 录取趋势 (3年)
@@ -147,7 +145,6 @@ def get_school_detail(school_name):
         ORDER BY m.employment_score DESC
     """, (uni['id'],)).fetchall()
     
-    conn.close()
     
     # 院校标签
     tags = []
@@ -172,7 +169,6 @@ def get_school_detail(school_name):
         "majors": [dict(m) for m in majors],
         "trend": trend,
     }
-
 
 # ============================================================
 # 对比摘要

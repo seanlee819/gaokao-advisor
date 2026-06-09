@@ -1,0 +1,79 @@
+<!-- 首页 - 成绩输入 -->
+<view class="container">
+  <!-- 头部 -->
+  <view class="header">
+    <text class="title">🎓 看金榜</text>
+    <text class="subtitle">位次法+线差法 · 冲/稳/保</text>
+  </view>
+
+  <!-- 免责声明 -->
+  <view class="disclaimer">
+    <text class="disclaimer-icon">⚠️</text>
+    <text class="disclaimer-text">本工具基于公开历史数据提供<text class="bold">参考性</text>志愿填报建议，<text class="bold">不构成任何报考决策依据</text>。最终志愿填报请以各省教育考试院官方发布信息为准。</text>
+  </view>
+
+  <!-- 输入卡片 -->
+  <view class="card">
+    <view class="form-row">
+      <text class="label">省份</text>
+      <picker mode="selector" range="{{provinces}}" value="{{provinceIdx}}" bindchange="onProvinceChange">
+        <view class="picker">{{provinces[provinceIdx] || '请选择'}}</view>
+      </picker>
+    </view>
+
+    <view class="form-row">
+      <text class="label">科类</text>
+      <radio-group class="radio-group" bindchange="onCategoryChange">
+        <label class="radio" wx:for="{{categories}}" wx:key="*this">
+          <radio value="{{item}}" checked="{{category === item}}" color="#1a73e8" />
+          {{item}}
+        </label>
+      </radio-group>
+    </view>
+
+    <view class="form-row">
+      <text class="label">高考分数</text>
+      <input class="input" type="number" placeholder="输入你的高考分数" value="{{score}}" bindinput="onScoreInput" />
+    </view>
+
+    <view class="form-row">
+      <text class="label">全省位次</text>
+      <input class="input" type="number" placeholder="输入你的全省排名" value="{{rank}}" bindinput="onRankInput" />
+    </view>
+
+    <button class="btn-primary" bindtap="onRecommend" disabled="{{!canSubmit}}">
+      🔍 开始推荐
+    </button>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading" wx:if="{{loading}}">
+    <text>正在分析中...</text>
+  </view>
+
+  <!-- 升级提示 -->
+  <view class="upgrade-banner" wx:if="{{user && user.tier === 'free'}}" bindtap="goMine">
+    <text class="upgrade-icon">🔓</text>
+    <view class="upgrade-text">
+      <text class="upgrade-title">免费版仅显示每档3所</text>
+      <text class="upgrade-desc">¥9.9 升级增强版，解锁每档10所 + 专业详情 →</text>
+    </view>
+  </view>
+
+  <view class="upgrade-banner login-banner" wx:if="{{!user}}" bindtap="goMine">
+    <text class="upgrade-icon">👤</text>
+    <view class="upgrade-text">
+      <text class="upgrade-title">登录后解锁完整功能</text>
+      <text class="upgrade-desc">每档3所 → 登录查看更多 →</text>
+    </view>
+  </view>
+
+  <!-- 说明 -->
+  <view class="card tips">
+    <text class="tips-title">📖 使用说明</text>
+    <text class="tips-text">1. 选择省份和科类，输入分数和位次</text>
+    <text class="tips-text">2. 系统基于近3年录取数据智能推荐</text>
+    <text class="tips-text">3. 冲=需要冲刺 稳=匹配度高 保=稳妥选择</text>
+    <text class="tips-text">4. 登录后可查看完整结果和详细数据</text>
+  </view>
+</view>

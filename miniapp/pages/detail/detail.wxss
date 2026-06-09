@@ -1,0 +1,140 @@
+.loading {
+  text-align: center;
+  padding: 100rpx;
+  color: #999;
+}
+.detail-header {
+  background: linear-gradient(135deg, #1a73e8, #4a9af5);
+  padding: 40rpx 30rpx;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+}
+.uni-name {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 16rpx;
+}
+.uni-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+.tag-level {
+  background: rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+}
+.tag-type, .tag-city {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+}
+.tag-public {
+  background: #fff;
+  color: #1a73e8;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.tag-private {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+}
+.section-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+.section-sub {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 16rpx;
+}
+.history-table {
+  border-radius: 8rpx;
+  overflow: hidden;
+  border: 1rpx solid #e0e0e0;
+}
+.history-row {
+  display: flex;
+}
+.history-row.header {
+  background: #f5f5f5;
+}
+.h-cell {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 8rpx;
+  font-size: 26rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.history-row.header .h-cell {
+  font-weight: 600;
+  font-size: 24rpx;
+  color: #666;
+}
+.h-cell.score {
+  color: #1a73e8;
+  font-weight: 600;
+}
+.major-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+.major-item:last-child {
+  border-bottom: none;
+}
+.major-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+.major-name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.badge-adv {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  font-size: 22rpx;
+  margin-left: 12rpx;
+}
+.major-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.meta {
+  font-size: 24rpx;
+  color: #888;
+}
+.policy-card {
+  background: #f8f9fa;
+}
+.policy-text {
+  display: block;
+  font-size: 24rpx;
+  color: #666;
+  line-height: 38rpx;
+  margin-bottom: 8rpx;
+}
+.empty {
+  text-align: center;
+  padding: 40rpx;
+  color: #999;
+  font-size: 26rpx;
+}
