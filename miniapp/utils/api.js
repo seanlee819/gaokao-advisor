@@ -1,4 +1,4 @@
-const API = 'https://kanjinbang.cn'
+const API = 'https://62.234.145.131'
 
 function request(url, method = 'GET', data = {}) {
   const app = getApp()

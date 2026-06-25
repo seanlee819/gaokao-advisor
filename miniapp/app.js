@@ -1,6 +1,6 @@
 App({
   globalData: {
-    API_BASE: 'https://kanjinbang.cn',
+    API_BASE: 'https://62.234.145.131',
     token: '',
     user: null
   },
