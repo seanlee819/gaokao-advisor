@@ -54,11 +54,60 @@
       </view>
     </view>
 
-    <!-- 招生政策提示 -->
-    <view class="card policy-card">
+    <!-- 招生政策 -->
+    <view class="card policy-card" wx:if="{{policy}}">
+      <text class="section-title">📋 招生政策</text>
+      
+      <view class="policy-rule-item">
+        <text class="policy-rule-icon">
+          {{policy.admission_rule === '分数清' ? '📊' : policy.admission_rule === '专业清' ? '🔴' : '⚠️'}}
+        </text>
+        <view>
+          <text class="policy-rule-text">{{policy.admission_rule === '分数清' ? '分数优先' : policy.admission_rule === '专业清' ? '专业优先' : '级差录取'}}</text>
+          <text wx:if="{{policy.grade_diff}}" class="policy-rule-sub">级差分值：{{policy.grade_diff}} — 每往后一个专业志愿，实际分数递减（前两个专业最关键）</text>
+          <text wx:elif="{{policy.admission_rule === '专业清'}}" class="policy-rule-sub">按专业志愿顺序录取，第一志愿不录取则可能调剂，填报需谨慎</text>
+          <text wx:elif="{{policy.admission_rule === '分数清'}}" class="policy-rule-sub">所有考生按总分排队，高分优先选择专业，最安全的录取模式</text>
+        </view>
+      </view>
+
+      <view class="policy-rule-item" wx:if="{{policy.subject_requirements}}">
+        <text class="policy-rule-icon">📝</text>
+        <view>
+          <text class="policy-rule-text">单科要求</text>
+          <text class="policy-rule-sub" wx:for="{{policy.subject_requirements}}" wx:for-item="val" wx:for-index="key" wx:key="key">{{key}} ≥ {{val}}分 · </text>
+        </view>
+      </view>
+
+      <view class="policy-rule-item" wx:if="{{policy.physical_restrictions.length > 0}}">
+        <text class="policy-rule-icon">🏥</text>
+        <view>
+          <text class="policy-rule-text">体检限制</text>
+          <text class="policy-rule-sub" wx:for="{{policy.physical_restrictions}}" wx:key="*this">{{item}} · </text>
+        </view>
+      </view>
+
+      <view class="policy-rule-item">
+        <text class="policy-rule-icon">➕</text>
+        <view>
+          <text class="policy-rule-text">加分政策</text>
+          <text class="policy-rule-sub">{{policy.bonus_policy || '无特殊政策'}}</text>
+        </view>
+      </view>
+
+      <view class="policy-rule-item" wx:if="{{policy.special_plans.length > 0}}">
+        <text class="policy-rule-icon">🎫</text>
+        <view>
+          <text class="policy-rule-text">专项计划</text>
+          <text class="policy-rule-sub" wx:for="{{policy.special_plans}}" wx:key="*this">{{item}} · </text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 报考须知（无政策数据时显示） -->
+    <view class="card policy-card" wx:else>
       <text class="section-title">📋 报考须知</text>
       <text class="policy-text">• 以上录取数据仅供参考，每年分数线会因报考人数、试题难度等因素波动，请以官方公布为准</text>
-      <text class="policy-text">• {{uni.level === '双一流' || uni.level === '985' || uni.level === '211' ? '该校为重点院校，建议优先了解其招生章程中的特殊要求（如单科成绩、体检限制等）' : '建议查阅该校招生官网了解具体专业录取规则'}}</text>
+      <text class="policy-text">• 建议查阅该校招生官网了解具体专业录取规则</text>
       <text class="policy-text">• 位次法的参考价值通常高于分数法，建议以位次为主要参考依据</text>
     </view>
   </block>

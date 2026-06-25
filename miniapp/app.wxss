@@ -52,3 +52,72 @@ page {
   background: #e8f5e9;
   color: #2e7d32;
 }
+
+/* ── 招生政策标记 ── */
+.policy-badges {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 12rpx;
+  gap: 8rpx;
+}
+
+.policy-badge {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background: #f0f0f0;
+  color: #666;
+}
+
+.policy-badge.rule-safe {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.policy-badge.rule-warn {
+  background: #fff8e1;
+  color: #e65100;
+}
+
+.policy-badge.rule-danger {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.policy-badge.subj-badge {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* ── 详细页 ── */
+.policy-card {
+  background: #fffef5;
+  border: 1rpx solid #ffcc02;
+}
+
+.policy-rule-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.policy-rule-item:last-child {
+  border-bottom: none;
+}
+
+.policy-rule-icon {
+  font-size: 36rpx;
+  margin-right: 16rpx;
+}
+
+.policy-rule-text {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.policy-rule-sub {
+  font-size: 24rpx;
+  color: #888;
+  margin-top: 4rpx;
+}

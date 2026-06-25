@@ -66,6 +66,7 @@ def generate_plan(result, province, category, score):
             "all_majors_analyzed": all_majors[:8],
             "advantage_majors": s.get("advantage_majors", [])[:5],
             "category_tag": tag,
+            "policy": s.get("policy", {}),  # 招生政策传递
         }
     
     # 冲: 综合分最低、最难、但最值得冲刺

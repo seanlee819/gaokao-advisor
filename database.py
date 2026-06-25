@@ -98,6 +98,20 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS admission_policies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            university_id INTEGER NOT NULL UNIQUE,
+            admission_rule TEXT NOT NULL,
+            grade_diff TEXT,
+            subject_requirements TEXT,
+            physical_restrictions TEXT,
+            bonus_policy TEXT,
+            special_plans TEXT,
+            FOREIGN KEY(university_id) REFERENCES universities(id)
+        )
+    """)
+
     conn.commit()
     conn.close()
     print("Database initialized successfully.")

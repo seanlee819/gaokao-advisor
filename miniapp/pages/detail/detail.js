@@ -28,6 +28,12 @@ Page({
         history: res.history || [],
         majors: res.majors || []
       })
+      // 加载招生政策
+      api.getPolicy(uid).then(policyRes => {
+        this.setData({ policy: policyRes.policy })
+      }).catch(() => {
+        this.setData({ policy: null })
+      })
     }).catch(err => {
       this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })

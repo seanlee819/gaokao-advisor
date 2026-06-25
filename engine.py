@@ -82,7 +82,7 @@ def calculate_diff_score(my_score, batch_line, uni_avg_score):
     else:
         return max(0, 50 + diff_gap * 3)    # 每低1分-3
 
-def recommend(my_score, my_rank, province, category, major_category=None, top_n=20):
+def recommend(my_score, my_rank, province, category, major_category=None, top_n=20, my_subject_scores=None):
     """
     核心推荐函数
     参数:
@@ -92,7 +92,8 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
         category: 科类
         major_category: 偏好的专业门类(可选)，如"工学"/"医学"/"经济学"
         top_n: 返回前N个推荐
-    返回: 冲/稳/保 三类推荐列表，每校附优势专业
+        my_subject_scores: 单科成绩 dict，如 {"数学": 125, "英语": 118}，用于策略过滤
+    返回: 冲/稳/保 三类推荐列表，每校附优势专业 + 招生政策
     """
     conn = get_db()
     available_years = get_available_years()
@@ -260,6 +261,48 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
     wen = sorted([r for r in results if r["category"] == "稳"], key=tier_sort_key, reverse=True)
     bao = sorted([r for r in results if r["category"] == "保"], key=tier_sort_key, reverse=True)
 
+    # ── 招生政策集成 ──
+    from policy import batch_get_policies, check_policy_risks
+
+    all_ids = [r["university_id"] for r in results]
+    policies = batch_get_policies(all_ids)
+
+    # 硬过滤：单科不达标
+    filtered_out = set()
+    if my_subject_scores:
+        for uid, policy in policies.items():
+            for subject, required in policy.get("subject_requirements", {}).items():
+                if my_subject_scores.get(subject, 0) < required:
+                    filtered_out.add(uid)
+                    break
+
+    for r in results:
+        uid = r["university_id"]
+        policy = policies.get(uid, {})
+        r["policy"] = {
+            "admission_rule": policy.get("admission_rule", ""),
+            "grade_diff": policy.get("grade_diff"),
+            "subject_requirements": policy.get("subject_requirements", {}),
+            "physical_restrictions": policy.get("physical_restrictions", []),
+            "bonus_policy": policy.get("bonus_policy", ""),
+            "special_plans": policy.get("special_plans", []),
+        }
+        risks, warnings = check_policy_risks(policy, my_subject_scores)
+        r["policy_risks"] = risks
+        r["policy_warnings"] = warnings
+
+    # 应用单科过滤
+    if filtered_out:
+        for r in results:
+            if r["university_id"] in filtered_out:
+                r["filtered_by_policy"] = True
+                r["filter_reason"] = "单科成绩不满足要求"
+
+    # 重新分组（过滤后的）
+    chong_out = sum(1 for r in chong if r.get("filtered_by_policy"))
+    wen_out = sum(1 for r in wen if r.get("filtered_by_policy"))
+    bao_out = sum(1 for r in bao if r.get("filtered_by_policy"))
+
     return {
         "my_info": {
             "score": my_score,
@@ -275,6 +318,7 @@ def recommend(my_score, my_rank, province, category, major_category=None, top_n=
             "冲": len(chong),
             "稳": len(wen),
             "保": len(bao),
+            "filtered_by_policy": len(filtered_out),
         },
         "冲": chong[:50],
         "稳": wen[:50],

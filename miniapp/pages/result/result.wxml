@@ -24,11 +24,23 @@
   <view class="school-list">
     <view class="card school-card" wx:for="{{displayList}}" wx:key="university_id" bindtap="goDetail" data-id="{{item.university_id}}">
       <view class="school-header">
-        <text class="school-name">{{item.name}}</text>
+        <text class="school-name">{{item.filtered_by_policy ? '🚫' : ''}}{{item.name}}</text>
         <text class="tag tag-{{tagClass}}">
           {{tagText}}
         </text>
       </view>
+      
+      <!-- 招生政策标记 -->
+      <view class="policy-badges" wx:if="{{item.policy && item.policy.admission_rule}}">
+        <text class="policy-badge rule-{{item.policy.admission_rule === '分数清' ? 'safe' : item.policy.admission_rule === '专业清' ? 'danger' : 'warn'}}">
+          {{item.policy.admission_rule === '分数清' ? '📊分数优先' : item.policy.admission_rule === '专业清' ? '🔴专业优先' : '⚠️级差录取'}}
+        </text>
+        <text class="policy-badge" wx:if="{{item.policy.grade_diff}}">级差{{item.policy.grade_diff}}</text>
+        <text class="policy-badge subj-badge" wx:for="{{item.policy.subject_requirements}}" wx:for-item="val" wx:for-index="key" wx:key="key">
+          {{key}}≥{{val}}
+        </text>
+      </view>
+      
       <view class="school-meta">
         <text class="meta-item">{{item.level || '本科'}}</text>
         <text class="meta-item">{{item.type}}</text>

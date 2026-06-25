@@ -46,6 +46,7 @@ class RegisterRequest(BaseModel):
 class RecommendQuery(BaseModel):
     score: int; rank: int; province: str; category: str = "理科"
     major_category: Optional[str] = None; top_n: int = 8
+    subject_scores: Optional[dict] = None  # {"数学": 125, "英语": 118}
 
 # ── 路由 ──
 @app.get("/")
@@ -89,7 +90,7 @@ def api_recommend(req: RecommendQuery, token: Optional[str] = Query(None)):
     if user and user['query_count'] >= limits['max_queries']:
         raise HTTPException(429, "查询次数已用完，请升级")
     
-    result = recommend(req.score, req.rank, req.province, req.category, req.major_category, req.top_n)
+    result = recommend(req.score, req.rank, req.province, req.category, req.major_category, req.top_n, req.subject_scores)
     
     if user:
         increment_query(user['id'])
@@ -195,6 +196,19 @@ def school_detail(university_id: int, province: str = Query(...), category: str 
         "history": [dict(h) for h in history],
         "majors": [dict(m) for m in majors],
     }
+
+# ── 招生政策 ──
+@app.get("/api/policy/{university_id}")
+def school_policy(university_id: int):
+    """获取院校招生政策详情"""
+    from policy import get_policy
+    policy = get_policy(university_id)
+    if not policy:
+        raise HTTPException(404, "该院校暂无政策数据")
+    conn = get_db()
+    uni = conn.execute("SELECT id, name, level, type FROM universities WHERE id=?", (university_id,)).fetchone()
+    conn.close()
+    return {"university": dict(uni) if uni else None, "policy": policy}
 
 # ── 管理后台 (admin key 验证) ──
 ADMIN_KEY = "kanjinbang2026"

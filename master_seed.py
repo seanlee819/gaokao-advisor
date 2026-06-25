@@ -208,7 +208,7 @@ def seed_all():
     uni_id_map = {}
     for name, code, city, level, utype, tier in schools:
         cur.execute(
-            "INSERT INTO universities (name,code,city,level,type,is_public) VALUES (?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO universities (name,code,city,level,type,is_public) VALUES (?,?,?,?,?,?)",
             (name, code, city, level, utype, 0 if "民办" in level else 1))
         uni_id_map[name] = cur.lastrowid
     conn.commit()

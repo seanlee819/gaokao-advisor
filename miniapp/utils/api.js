@@ -1,4 +1,4 @@
-const API = 'https://62.234.145.131'
+const API = 'https://kanjinbang.cn'
 
 function request(url, method = 'GET', data = {}) {
   const app = getApp()
@@ -73,5 +73,10 @@ module.exports = {
   // 获取院校详情
   getSchoolDetail(uid, province, category) {
     return request(`/api/school/${uid}?province=${province}&category=${category}`)
+  },
+
+  // 获取招生政策
+  getPolicy(uid) {
+    return request(`/api/policy/${uid}`)
   }
 }

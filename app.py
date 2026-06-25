@@ -95,6 +95,23 @@ with st.sidebar:
     with c1: score = st.number_input("分数", 0, 750, 580)
     with c2: rank = st.number_input("位次", 0, 9999999, 30000)
     
+    # 单科成绩 (可选)
+    with st.expander("📝 单科成绩 (可选)", expanded=False):
+        st.caption("填写单科成绩可筛查院校单科要求")
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            subj_math = st.number_input("数学", 0, 150, 0, key="sub_math")
+            subj_eng = st.number_input("英语", 0, 150, 0, key="sub_eng")
+            subj_chinese = st.number_input("语文", 0, 150, 0, key="sub_chi")
+        with sc2:
+            subj_chem = st.number_input("化学", 0, 150, 0, key="sub_chem")
+            subj_bio = st.number_input("生物", 0, 150, 0, key="sub_bio")
+        subject_scores = {}
+        for k, v in [("数学", subj_math), ("英语", subj_eng), ("语文", subj_chinese), ("化学", subj_chem), ("生物", subj_bio)]:
+            if v > 0: subject_scores[k] = v
+    if not any([subj_math, subj_eng, subj_chinese, subj_chem, subj_bio]):
+        subject_scores = None
+    
     major_cats = ["不限"] + get_major_categories()
     major_choice = st.selectbox("专业方向", major_cats)
     major_filter = None if major_choice == "不限" else major_choice
@@ -110,7 +127,7 @@ if search_btn:
         st.warning("查询次数已用完，请升级版本")
     else:
         with st.spinner("分析中..."):
-            st.session_state.result = recommend(score, rank, province, category, major_filter)
+            st.session_state.result = recommend(score, rank, province, category, major_filter, my_subject_scores=subject_scores)
             st.session_state.search_done = True
         if user:
             increment_query(user['id'])
@@ -134,6 +151,11 @@ if st.session_state.result:
         
         mc1,mc2,mc3 = st.columns(3)
         mc1.metric("🔴 冲", f"{s['冲']}所"); mc2.metric("🔵 稳", f"{s['稳']}所"); mc3.metric("🟢 保", f"{s['保']}所")
+        
+        filtered = s.get("filtered_by_policy", 0)
+        if filtered > 0:
+            st.caption(f"⚠️ {filtered} 所院校因单科不达标被过滤")
+        
         st.markdown("---")
         
         if not show_m:
@@ -146,11 +168,42 @@ if st.session_state.result:
             rows = []
             for d in data[:top_n]:
                 prob, _ = estimate_probability(d['composite'], info['batch'])
+                policy = d.get("policy", {})
+                rule = policy.get("admission_rule", "")
+                
+                # 录取规则徽章 (直观表述)
+                rule_labels = {"分数清":"分数优先","专业级差":"级差录取","专业清":"专业优先"}
+                rule_display = rule_labels.get(rule, rule)
+                rule_badge = {"分数清":"📊","专业级差":"⚠️","专业清":"🔴"}.get(rule, "")
+                
+                # 风险标记
+                risks = d.get("policy_risks", [])
+                risk_tags = []
+                for r in risks:
+                    if r["level"] == "critical":
+                        risk_tags.append("🚫")
+                    elif r["level"] == "high":
+                        risk_tags.append("⚠️")
+                risk_str = " ".join(risk_tags) if risk_tags else ""
+                
+                # 单科要求
+                subj_reqs = policy.get("subject_requirements", {})
+                subj_str = ", ".join(f"{k}≥{v}" for k, v in subj_reqs.items()) if subj_reqs else "-"
+                
                 row = {"院校":d['name'],"层次":d['level'],"城市":d['city'],
-                       "均分":f"{d['uni_avg_score']}","综合":f"{d['composite']:.0f}","概率":f"{prob}%"}
-                if major_filter:  # 有专业偏好时显示匹配标识
+                       "均分":f"{d['uni_avg_score']}","综合":f"{d['composite']:.0f}","概率":f"{prob}%",
+                       "录取规则":f"{rule_badge} {rule_display}",
+                       "单科要求": subj_str}
+                
+                # 过滤标记
+                if d.get("filtered_by_policy"):
+                    row["院校"] = f"🚫 {d['name']}"
+                
+                if major_filter:
                     row["专业"] = "✅" if d.get("major_match") else "➖"
                 if show_m: row["🟢可报"] = ", ".join(d.get("majors_bao",[])) or "-"
+                if risk_str:
+                    row["风险"] = risk_str
                 rows.append(row)
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
             if len(data) > top_n:
@@ -180,6 +233,19 @@ if st.session_state.result:
                                     st.markdown(f"🎯 推荐: {', '.join(s['majors'])}")
                                 if s.get('all_majors_analyzed'):
                                     st.caption(f"专业分析: {', '.join(s['all_majors_analyzed'][:5])}")
+                                # 招生政策
+                                if s.get('policy'):
+                                    p = s['policy']
+                                    rule_map = {
+                                        "分数清":"📊 分数优先 — 高分考生先挑专业，最安全的模式",
+                                        "专业级差":f"⚠️ 级差录取 — 每轮志愿递减{p.get('grade_diff','?')}分，前两个专业最关键",
+                                        "专业清":"🔴 专业优先 — 第一志愿不录取就可能调剂，填报需谨慎"
+                                    }
+                                    st.caption(rule_map.get(p.get('admission_rule',''), p.get('admission_rule','')))
+                                    if p.get('subject_requirements'):
+                                        st.caption(f"📝 单科要求: {', '.join(f'{k}≥{v}' for k,v in p['subject_requirements'].items())}")
+                                    if p.get('special_plans'):
+                                        st.caption(f"🎫 {' · '.join(p['special_plans'])}")
                 
                 if limits.get('export'):
                     pdf_path = os.path.join(os.path.dirname(__file__), f"志愿方案_{info['province']}_{info['score']}分.pdf")
