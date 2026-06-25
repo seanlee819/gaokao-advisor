@@ -79,16 +79,14 @@ def api_me(token: str = Query(...)):
 
 @app.post("/api/recommend")
 def api_recommend(req: RecommendQuery, token: Optional[str] = Query(None)):
-    # 可选认证: 有token就记录查询, 无token也允许基础推荐
+    # 免费版: 不限制查询次数
     user = None
     if token:
         uid = verify_token(token)
         if uid: user = get_user(uid)
     
-    limits = get_tier_limits(user['tier'] if user else 'free')
-    
-    if user and user['query_count'] >= limits['max_queries']:
-        raise HTTPException(429, "查询次数已用完，请升级")
+    # 免费版: top_n=20, 不限次
+    limit_n = 20
     
     result = recommend(req.score, req.rank, req.province, req.category, req.major_category, req.top_n, req.subject_scores)
     
@@ -98,10 +96,10 @@ def api_recommend(req: RecommendQuery, token: Optional[str] = Query(None)):
     if "error" in result:
         raise HTTPException(400, result["error"])
     
-    # 裁剪到对应等级
-    result["冲"] = result["冲"][:limits['top_n']]
-    result["稳"] = result["稳"][:limits['top_n']]
-    result["保"] = result["保"][:limits['top_n']]
+    # 免费版无裁剪
+    result["冲"] = result["冲"][:limit_n]
+    result["稳"] = result["稳"][:limit_n]
+    result["保"] = result["保"][:limit_n]
     
     return result
 
@@ -121,10 +119,11 @@ def api_major_cats():
 # ── 小程序专用: 免登录快速推荐 (限制更严) ──
 @app.get("/api/miniapp/quick")
 def miniapp_quick(score: int, rank: int, province: str, category: str = "理科"):
-    """微信小程序快速推荐: 无需登录, 免费版限制"""
+    """微信小程序快速推荐: 免费版"""
     result = recommend(score, rank, province, category)
     if "error" in result: raise HTTPException(400, result["error"])
-    result["冲"] = result["冲"][:3]; result["稳"] = result["稳"][:3]; result["保"] = result["保"][:3]
+    # 每档返回10所
+    result["冲"] = result["冲"][:10]; result["稳"] = result["稳"][:10]; result["保"] = result["保"][:10]
     return result
 
 # ── 支付接口 (预留, 后续接入 xorpay/微信支付) ──
