@@ -126,3 +126,13 @@
 .login-banner .upgrade-desc {
   color: #1a73e8;
 }
+
+/* ICP备案 */
+.icp-footer {
+  text-align: center;
+  padding: 30rpx 0;
+}
+.icp-footer text {
+  font-size: 22rpx;
+  color: #bbb;
+}

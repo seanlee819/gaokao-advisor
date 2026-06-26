@@ -47,4 +47,9 @@
       </view>
     </view>
   </view>
+
+  <!-- ICP备案 -->
+  <view class="icp-footer">
+    <text>豫ICP备2026026829号-1X</text>
+  </view>
 </view>

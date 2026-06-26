@@ -307,3 +307,5 @@ elif not search_btn:
 | 查询次数 | 3次 | 30次 | 不限 |
 | 就业数据 | ✗ | ✗ | ✓ |
     """)
+
+st.markdown('<div style="text-align:center;padding:30px;color:#bbb;font-size:12px">豫ICP备2026027300号</div>', unsafe_allow_html=True)

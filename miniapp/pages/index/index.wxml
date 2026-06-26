@@ -51,23 +51,6 @@
     <text>正在分析中...</text>
   </view>
 
-  <!-- 升级提示 -->
-  <view class="upgrade-banner" wx:if="{{user && user.tier === 'free'}}" bindtap="goMine">
-    <text class="upgrade-icon">🔓</text>
-    <view class="upgrade-text">
-      <text class="upgrade-title">免费版仅显示每档3所</text>
-      <text class="upgrade-desc">¥9.9 升级增强版，解锁每档10所 + 专业详情 →</text>
-    </view>
-  </view>
-
-  <view class="upgrade-banner login-banner" wx:if="{{!user}}" bindtap="goMine">
-    <text class="upgrade-icon">👤</text>
-    <view class="upgrade-text">
-      <text class="upgrade-title">登录后解锁完整功能</text>
-      <text class="upgrade-desc">每档3所 → 登录查看更多 →</text>
-    </view>
-  </view>
-
   <!-- 说明 -->
   <view class="card tips">
     <text class="tips-title">📖 使用说明</text>
@@ -75,5 +58,10 @@
     <text class="tips-text">2. 系统基于近3年录取数据智能推荐</text>
     <text class="tips-text">3. 冲=需要冲刺 稳=匹配度高 保=稳妥选择</text>
     <text class="tips-text">4. 登录后可查看完整结果和详细数据</text>
+  </view>
+
+  <!-- ICP备案 -->
+  <view class="icp-footer">
+    <text>豫ICP备2026026829号-1X</text>
   </view>
 </view>

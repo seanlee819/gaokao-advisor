@@ -101,3 +101,13 @@
   font-size: 28rpx;
   color: #ccc;
 }
+
+/* ICP备案 */
+.icp-footer {
+  text-align: center;
+  padding: 30rpx 0;
+}
+.icp-footer text {
+  font-size: 22rpx;
+  color: #bbb;
+}
