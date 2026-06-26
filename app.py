@@ -32,8 +32,10 @@ with st.sidebar:
     st.header("📋 输入成绩")
     
     comprehensive = {"北京","天津","上海","浙江","山东","海南"}
-    phys_hist = {"河北","辽宁","江苏","福建","湖北","湖南","广东","重庆"}
-    all_provs = sorted(comprehensive|phys_hist|{"河南","四川","山西","内蒙古","吉林","黑龙江","安徽","江西","广西","贵州","云南","西藏","陕西","甘肃","青海","宁夏","新疆"})
+    phys_hist = {"河北","辽宁","江苏","福建","湖北","湖南","广东","重庆",
+                 "黑龙江","甘肃","吉林","安徽","江西","贵州","广西",
+                 "河南","四川","山西","内蒙古","云南","陕西","青海","宁夏"}
+    all_provs = sorted(comprehensive|phys_hist|{"西藏","新疆"})
     
     province = st.selectbox("省份", all_provs)
     if province in comprehensive: cats, dc = ["综合"], "综合"
